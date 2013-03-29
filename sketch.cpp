@@ -131,9 +131,10 @@ LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
-char nextAppointment[MESSAGE_SIZE] = "201303291224:This is my message~";
+char nextAppointment[MESSAGE_SIZE] = "201303291240:This is my message~";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
+char *appointmentMessage;
 
 char timeStampAppointment[TIME_STAMP+1]="";
 char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
@@ -204,10 +205,19 @@ void loop()
   Serial.println(timeStampCurrentAdj);
 
   if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
-    tune();
     getAppointmentMessage();
     lcd.setCursor(0,1);
     lcd.print(appointmentMessage);
+    tune();
+    
+    //lcd.setCursor(0,1);
+    //lcd.print(appointmentMessage);
+    //for(int i=0 ; i < strlen(appointmentMessage);i++){
+    //  lcd.scrollDisplayLeft();
+    //  delay(700);
+    //}
+    lcd.home();  
+    lcd.clear();
   } 
 
 }
@@ -225,6 +235,13 @@ void tune(){
     delay(pauseBetweenNotes);
 
     noTone(speakerPin);                // stop the tone playing
+    
+    //------------
+    
+    for(int i=0 ; i < strlen(appointmentMessage);i++){
+      lcd.scrollDisplayLeft();
+      delay(700)
+    
   }
 } 
 
@@ -239,10 +256,11 @@ void getTimeStampFromAppointment(){// this populates the timeStamp string
 }
 
 void getAppointmentMessage(){
-  strcpy(appointmentMessage,nextAppointment);
-  char *messageEnd = strchr(appointmentMessage,'~');
+  //strcpy(appointmentMessage,nextAppointment);
+  //char *messageEnd = strchr(appointmentMessage,'~');
+  char *messageEnd = strchr(nextAppointment,'~');
   messageEnd = '\0';
-  appointmentMessage = appointmentMessage + 13; // remove the starting timeStamp
+  appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
 
 }
 
