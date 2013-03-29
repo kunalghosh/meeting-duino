@@ -131,7 +131,7 @@ LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
-char nextAppointment[MESSAGE_SIZE] = "201303291240:This is my message~";
+char nextAppointment[MESSAGE_SIZE] = "201303292012:This is my message~";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
 char *appointmentMessage;
@@ -140,8 +140,10 @@ char timeStampAppointment[TIME_STAMP+1]="";
 char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
 
 int  remindBeforeMins = 0;
+int messageLength;
 
 int piezoPin = A3;
+int resetLCD = 0;
 
 int EEPROMreadPosition = 0;
 // First few bytes are reserved for the time of Appointment
@@ -173,7 +175,6 @@ void setup()  {
 
 void loop()
 {
-  delay(3000);
   lcd.setCursor(0, 0);
   lcd.print("Date: ");
   displayNumLCD(day());
@@ -206,43 +207,56 @@ void loop()
 
   if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
     getAppointmentMessage();
+    messageLength = strlen(appointmentMessage);
     lcd.setCursor(0,1);
     lcd.print(appointmentMessage);
     tune();
-    
+
     //lcd.setCursor(0,1);
     //lcd.print(appointmentMessage);
     //for(int i=0 ; i < strlen(appointmentMessage);i++){
     //  lcd.scrollDisplayLeft();
     //  delay(700);
-    //}
+    //}  
+    resetLCD = 1;    
+  }
+  if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){  
     lcd.home();  
     lcd.clear();
-  } 
-
+    resetLCD = 0;
+  }
 }
 
 void tune(){
-  for (int thisNote = 0; thisNote < 26; thisNote++) {
+  int thisNote = 0;
+  //for (int thisNote = 0,scroll=0; thisNote < 26; thisNote++) {
 
-    // to calculate the note duration, take one second 
-    // divided by the note type.
-    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-    int noteDuration = 1000/noteDurations[thisNote];
-    tone(speakerPin, melody[thisNote],noteDuration);
+  // to calculate the note duration, take one second 
+  // divided by the note type.
+  //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+  int noteDuration = 1000/noteDurations[thisNote];
+  tone(speakerPin, melody[thisNote],noteDuration);
 
-    int pauseBetweenNotes = noteDuration + 50;      //delay between pulse
-    delay(pauseBetweenNotes);
+  int pauseBetweenNotes = noteDuration + 50;      //delay between pulse
+  delay(pauseBetweenNotes+100);
 
-    noTone(speakerPin);                // stop the tone playing
-    
-    //------------
-    
-    for(int i=0 ; i < strlen(appointmentMessage);i++){
-      lcd.scrollDisplayLeft();
-      delay(700)
-    
-  }
+  noTone(speakerPin);                // stop the tone playing
+
+  //------------
+
+  //for(int i=0 ; i < strlen(appointmentMessage);i++){
+  //if(scroll++ <= messageLength){
+  //lcd.scrollDisplayLeft();
+  //}
+  //else{
+  lcd.scrollDisplayLeft();
+  //lcd.home();  
+  //lcd.clear();
+  //scroll = 0;
+  //}
+  //delay(700);
+  //}
+  //}
 } 
 
 void getCurrentAdjustedTimeStamp(){
