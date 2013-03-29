@@ -106,7 +106,7 @@ void beep(unsigned char delayms){
 } 
 
 void getCurrentAdjustedTimeStamp(){
-	sprintf(timeStampCurrentAdj,"%d%d%d%d%d",year(),month(),day(),hour(),minute()-remindBeforeMins);
+	sprintf(timeStampCurrentAdj,"%d%02d%02d%02d%02d",year(),month(),day(),hour(),minute()-remindBeforeMins);
 }
 
 void getTimeStampFromAppointment(){// this populates the timeStamp string
