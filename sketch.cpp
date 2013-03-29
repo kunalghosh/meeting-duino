@@ -56,13 +56,6 @@ void setup()  {
   getTimeStampFromAppointment();// this populates the timeStamp string
   //populateDateVariables();
 
-  if ( appYear == year()){
-    for(int i =0 ; i < 400; i ++){
-      analogWrite(A3,i); 
-      //delay(100);
-      noTone(100);
-    }
-  }
 }
 
 void loop()
