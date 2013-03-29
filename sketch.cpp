@@ -43,7 +43,7 @@ int EEPROMreadPosition = 0;
 void setup()  {
 
 
-  //Serial.begin(9600);  
+  Serial.begin(9600);  
   pinMode(piezoPin,OUTPUT);
   //LCD led turn on.
   pinMode(A2,OUTPUT);
@@ -87,7 +87,10 @@ void loop()
     setSyncProvider(RTC.get);   // the function to get the time from the RTC
 
   getCurrentAdjustedTimeStamp();
-
+  
+  Serial.println(timeStampAppointment);
+  Serial.println(timeStampCurrentAdj);
+  
   if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
 	for(int i = 0 ; i < 1000 ; i++)
 		beep(50);
