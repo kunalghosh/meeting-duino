@@ -18,20 +18,18 @@
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
-int EEPROMreadPosition = 0;
-// first visible ASCII character '!' is number 33:
+
 char nextAppointment[MESSAGE_SIZE] = "201303282305:This is my message~";
 char readAppointment[MESSAGE_SIZE] = "";
-char timeStamp[TIME_STAMP]="";
-
-int appointmentYear;
-int appointmentMonth;
-int appointmentDay;
-int appointmentHour;
-int appointmentMinute; 
-int appointmentSecond;
-
 char appointmentMessage[MESSAGE_SIZE-NON_MESSAGE] = "";
+
+char timeStampAppointment[TIME_STAMP]="";
+char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
+
+int  remindBeforeMins = 5;
+
+int piezoPin = A3;
+
 
 // First few bytes are reserved for the time of Appointment
 // YYYYMMDDHHmm
@@ -44,8 +42,9 @@ char appointmentMessage[MESSAGE_SIZE-NON_MESSAGE] = "";
 
 void setup()  {
 
+
   //Serial.begin(9600);  
-  pinMode(A3,OUTPUT);
+  pinMode(piezoPin,OUTPUT);
   //LCD led turn on.
   pinMode(A2,OUTPUT);
   digitalWrite(A2,HIGH);
@@ -95,6 +94,24 @@ void loop()
   if( ( millis() / 100000 ) % 100 == 0 )
     setSyncProvider(RTC.get);   // the function to get the time from the RTC
 
+  getCurrentAdjustedTimeStamp();
+
+  if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
+	for(int i = 0 ; i < 1000 ; i++)
+		beep(50);
+  }
+}
+
+void beep(unsigned char delayms){
+	analogWrite(piezoPin, 20);      // Almost any value can be used except 0 and 255
+	// experiment to get the best tone
+	delay(delayms);          // wait for a delayms ms
+	analogWrite(piezoPin, 0);       // 0 turns it off
+	delay(delayms);          // wait for a delayms ms   
+} 
+
+void getCurrentAdjustedTimeStamp(){
+	sprintf(timeStampCurrentAdj,"%d%d%d%d%d",year(),month(),day(),hour(),minute()-remindBeforeMins);
 }
 
 void blinkColon(){
