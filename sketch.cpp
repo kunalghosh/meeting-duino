@@ -30,7 +30,7 @@ int  remindBeforeMins = 5;
 
 int piezoPin = A3;
 
-
+int EEPROMreadPosition = 0;
 // First few bytes are reserved for the time of Appointment
 // YYYYMMDDHHmm
 // Y year
@@ -60,7 +60,6 @@ void setup()  {
 
 void loop()
 {
-  lcd.print(appYear);
   delay(3000);
   lcd.setCursor(0, 0);
   lcd.print("Date: ");
@@ -107,6 +106,11 @@ void getCurrentAdjustedTimeStamp(){
 	sprintf(timeStampCurrentAdj,"%d%d%d%d%d",year(),month(),day(),hour(),minute()-remindBeforeMins);
 }
 
+void getTimeStampFromAppointment(){// this populates the timeStamp string
+  //strncpy(timeStampAppointment,readAppointment,sizeof(timeStampAppointment));
+  strncpy(timeStampAppointment,nextAppointment,sizeof(timeStampAppointment));
+}
+
 void blinkColon(){
   if(second() % 2 == 0)
     lcd.print(":");
@@ -132,9 +136,7 @@ void displayNumLCD(int value){
   lcd.print(value);
 }
 
-void getTimeStampFromAppointment(){// this populates the timeStamp string
-  strncpy(timeStamp,readAppointment,sizeof(timeStamp));
-}
+
 
 void ReadNextAppointment(){
   for ( EEPROMreadPosition=0; EEPROMreadPosition < 100 ; EEPROMreadPosition++)
@@ -212,8 +214,3 @@ byte I2CEEPROM_Read(unsigned int address )
   data = Wire.read();
   return data;
 }
-
-
-
-
-
