@@ -12,18 +12,18 @@
 #include <LiquidCrystal.h>
 
 #define MESSAGE_SIZE 100
-#define TIME_STAMP 12
+#define TIME_STAMP 13 // to add an ending \0 terminator where required. hence 12+1
 #define NON_MESSAGE 14 //in an appointment string 201303282305 , : and ~ are not a part of message so 12 characters
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
-char nextAppointment[MESSAGE_SIZE] = "201303282305:This is my message~";
+char nextAppointment[MESSAGE_SIZE] = "201303291120:This is my message~";
 char readAppointment[MESSAGE_SIZE] = "";
 char appointmentMessage[MESSAGE_SIZE-NON_MESSAGE] = "";
 
-char timeStampAppointment[TIME_STAMP]="";
+char timeStampAppointment[TIME_STAMP+1]="";
 char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
 
 int  remindBeforeMins = 5;
@@ -87,31 +87,32 @@ void loop()
     setSyncProvider(RTC.get);   // the function to get the time from the RTC
 
   getCurrentAdjustedTimeStamp();
-  
+
   Serial.println(timeStampAppointment);
   Serial.println(timeStampCurrentAdj);
-  
+
   if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
-	for(int i = 0 ; i < 1000 ; i++)
-		beep(50);
+    for(int i = 0 ; i < 1000 ; i++)
+      beep(50);
   }
 }
 
 void beep(unsigned char delayms){
-	analogWrite(piezoPin, 20);      // Almost any value can be used except 0 and 255
-	// experiment to get the best tone
-	delay(delayms);          // wait for a delayms ms
-	analogWrite(piezoPin, 0);       // 0 turns it off
-	delay(delayms);          // wait for a delayms ms   
+  analogWrite(piezoPin, 20);      // Almost any value can be used except 0 and 255
+  // experiment to get the best tone
+  delay(delayms);          // wait for a delayms ms
+  analogWrite(piezoPin, 0);       // 0 turns it off
+  delay(delayms);          // wait for a delayms ms   
 } 
 
 void getCurrentAdjustedTimeStamp(){
-	sprintf(timeStampCurrentAdj,"%d%02d%02d%02d%02d",year(),month(),day(),hour(),minute()-remindBeforeMins);
+  sprintf(timeStampCurrentAdj,"%d%02d%02d%02d%02d",year(),month(),day(),hour(),minute()-remindBeforeMins);
 }
 
 void getTimeStampFromAppointment(){// this populates the timeStamp string
   //strncpy(timeStampAppointment,readAppointment,sizeof(timeStampAppointment));
   strncpy(timeStampAppointment,nextAppointment,sizeof(timeStampAppointment));
+  timeStampAppointment[TIME_STAMP-1]='\0';
 }
 
 void blinkColon(){
@@ -217,3 +218,4 @@ byte I2CEEPROM_Read(unsigned int address )
   data = Wire.read();
   return data;
 }
+
