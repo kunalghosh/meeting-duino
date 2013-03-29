@@ -11,11 +11,6 @@
 #include <DS1307RTC.h>  // a basic DS1307 library that returns time as a time_t
 #include <LiquidCrystal.h>
 
-#define MESSAGE_SIZE 100
-#define TIME_STAMP 13 // to add an ending \0 terminator where required. hence 12+1
-#define NON_MESSAGE 14 //in an appointment string 201303282305 , : and ~ are not a part of message so 12 characters
-// initialize the library with the numbers of the interface pins
-
 /*************************************************
  * Public Constants
  *************************************************/
@@ -126,14 +121,19 @@ int noteDurations[] = {
   6, 6, 3, 3,3,3,3, 
   6, 6, 3, 3,3,3 };
 
+#define MESSAGE_SIZE 100
+#define TIME_STAMP 13 // to add an ending \0 terminator where required. hence 12+1
+//#define NON_MESSAGE 14 //in an appointment string 201303282305 , : and ~ are not a part of message so 12 characters
+// initialize the library with the numbers of the interface pins
+
 
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
-char nextAppointment[MESSAGE_SIZE] = "201303291139:This is my message~";
+char nextAppointment[MESSAGE_SIZE] = "201303291224:This is my message~";
 char readAppointment[MESSAGE_SIZE] = "";
-char appointmentMessage[MESSAGE_SIZE-NON_MESSAGE] = "";
+//char appointmentMessage[MESSAGE_SIZE] = "";
 
 char timeStampAppointment[TIME_STAMP+1]="";
 char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
@@ -205,6 +205,9 @@ void loop()
 
   if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
     tune();
+    getAppointmentMessage();
+    lcd.setCursor(0,1);
+    lcd.print(appointmentMessage);
   } 
 
 }
@@ -233,6 +236,14 @@ void getTimeStampFromAppointment(){// this populates the timeStamp string
   //strncpy(timeStampAppointment,readAppointment,sizeof(timeStampAppointment));
   strncpy(timeStampAppointment,nextAppointment,sizeof(timeStampAppointment));
   timeStampAppointment[TIME_STAMP-1]='\0';
+}
+
+void getAppointmentMessage(){
+  strcpy(appointmentMessage,nextAppointment);
+  char *messageEnd = strchr(appointmentMessage,'~');
+  messageEnd = '\0';
+  appointmentMessage = appointmentMessage + 13; // remove the starting timeStamp
+
 }
 
 void blinkColon(){
@@ -281,37 +292,6 @@ void ReadNextAppointment(){
 
 }
 
-/*
-void populateDateVariables(){
- 
- //sample appointment => "201303282305:This is my message~";
- char temporary[4] = "";
- 
- temporary[0] = readAppointment[0]
- temporary[1] = readAppointment[1]
- temporary[2] = readAppointment[2]
- temporary[3] = readAppointment[3]
- 
- appointmentYear = atoi(temporary);
- 
- temporary = "";
- temporary[0] = readAppointment[4]
- temporary[1] = readAppointment[5]
- temporary[2]='\0'
- 
- 
- appointmentSecond;
- appointmentMinute;
- appointmentHour;
- appointmentDay;
- appointmentMonth;
- 
- 
- appointmentMessage;
- 
- 
- }
- */
 
 // This function is similar to EEPROM.write()
 void I2CEEPROM_Write( unsigned int address, byte data )
