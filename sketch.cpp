@@ -121,31 +121,21 @@ int noteDurations[] = {
 	6, 6, 3, 3,3,3,3, 
 	6, 6, 3, 3,3,3 };
 
+
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+
+const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
+
 #define MESSAGE_SIZE 100
 #define TIME_STAMP 13 // to add an ending \0 terminator where required. hence 12+1
 //#define NON_MESSAGE 14 //in an appointment string 201303282305 , : and ~ are not a part of message so 12 characters
 // initialize the library with the numbers of the interface pins
 
 
-LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
-
-const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
-
 char nextAppointment[MESSAGE_SIZE] = "201303300330:Wake Up";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
 char *appointmentMessage;
-
-char timeStampAppointment[TIME_STAMP+1]="";
-char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
-
-int  remindBeforeMins = 0;
-int messageLength;
-
-int piezoPin = A3;
-int resetLCD = 0;
-
-int EEPROMreadPosition = 0;
 // First few bytes are reserved for the time of Appointment
 // YYYYMMDDHHmm
 // Y year
@@ -153,6 +143,21 @@ int EEPROMreadPosition = 0;
 // D day
 // H hour ( 24 hour format )
 // m minute
+
+
+
+//increment this everytime an appointment is met. 
+//The address from where you get the appointment is 100 * appointmentCount since each appointment is 100Bytes long
+int  appointmentCount = 0;
+
+char timeStampAppointment[TIME_STAMP+1]="";
+char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
+
+int  remindBeforeMins = 0;
+int  messageLength;
+
+int  piezoPin = A3;
+int  resetLCD = 0;
 
 
 void setup()  {
@@ -172,27 +177,19 @@ void setup()  {
 
 void loop()
 {
-	lcd.setCursor(0, 0);
-	lcd.print("Date: ");
-	displayNumLCD(day());
-	lcd.print("/");
-	displayNumLCD(month());
-	lcd.print("/");
-	displayNumLCD(year());
+	
+	displayDateTime(); //display's date and time on the first row of the 16x2 LCD
 
-	lcd.setCursor(0, 1);
-	lcd.print("Time: ");
-	displayNumLCD(hour());
-	blinkColon();
-	displayNumLCD(minute());
-
-	if( ( millis() / 100000 ) % 100 == 0 )
+	if( ( millis() / 100000 ) % 100 == 0 ){// every one seconds
 		setSyncProvider(RTC.get);   // the function to get the time from the RTC
+	}
 
-	getCurrentAdjustedTimeStamp();
-
-	Serial.println(timeStampAppointment);
-	Serial.println(timeStampCurrentAdj);
+	if( !second() ){// when second == 0 i.e. after 59
+		getCurrentAdjustedTimeStamp();
+	}
+	
+	//Serial.println(timeStampAppointment);
+	//Serial.println(timeStampCurrentAdj);
 
 	if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
 		getAppointmentMessage();
@@ -205,14 +202,36 @@ void loop()
 		lcd.scrollDisplayLeft();
 		resetLCD = 1;   
 		digitalWrite(A2, HIGH); 
-
 	}
-	if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){  
+
+	if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){ 
+		// turns LCD backlight off 
+		// increments appointmentCount so that the next appointment is read.
 		lcd.home();  
 		lcd.clear();
 		digitalWrite(A2,LOW);
 		resetLCD = 0;
+		appointmentCount += 1;
+		ReadNextAppointment();
+		getTimeStampFromAppointment();
 	}
+}
+
+void displayDateTime(){
+	lcd.setCursor(0, 0);
+	//lcd.print("Date: ");
+	displayNumLCD(day());
+	lcd.print("/");
+	displayNumLCD(month());
+	lcd.print("/");
+	displayNumLCD(year());
+
+	//lcd.setCursor(0, 1);
+	//lcd.print("Time: ");
+	displayNumLCD(hour());
+	blinkColon();
+	displayNumLCD(minute());
+
 }
 
 void tune(){
@@ -240,11 +259,13 @@ void getTimeStampFromAppointment(){// this populates the timeStamp string
 }
 
 void getAppointmentMessage(){
-	strcpy(appointmentMessage,nextAppointment);
+	//strcpy(appointmentMessage,nextAppointment);
+	strcpy(appointmentMessage,readAppointment);
 	char *messageEnd = strchr(appointmentMessage,'~');
 	//char *messageEnd = strchr(nextAppointment,'~');
 	messageEnd = '\0';
-	appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
+	//appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
+	appointmentMessage = readAppointment + 13; // remove the starting timeStamp
 }
 
 void blinkColon(){
@@ -272,15 +293,16 @@ void displayNumLCD(int value){
 }
 
 void ReadNextAppointment(){
-	for ( EEPROMreadPosition=0; EEPROMreadPosition < 100 ; EEPROMreadPosition++)
+	for ( appointmentCount; appointmentCount < 100 ; appointmentCount++)//not initialized to zero everytime so that the count is maintained.
 	{
-		char c = I2CEEPROM_Read(EEPROMreadPosition);
-		readAppointment[EEPROMreadPosition] = c;
+		char c = I2CEEPROM_Read(appointmentCount);
+		readAppointment[appointmentCount] = c;
 		//      Serial.print(c);
 
 		if(c == '~')
 		{
-			readAppointment[++EEPROMreadPosition] = '\0';
+			//readAppointment[++appointmentCount] = '\0';
+			readAppointment[appointmentCount] = '\0';
 			//Serial.println();
 			break;     // start over on a new line
 		}
@@ -315,7 +337,3 @@ byte I2CEEPROM_Read(unsigned int address )
 	data = Wire.read();
 	return data;
 }
-
-
-
-
