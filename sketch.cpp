@@ -162,7 +162,7 @@ void setup()  {
   pinMode(piezoPin,OUTPUT);
   //LCD led turn on.
   pinMode(A2,OUTPUT);
-  digitalWrite(A2,HIGH);
+  //digitalWrite(A2,HIGH);//LCD LED backlight turn ON.
   setSyncProvider(RTC.get);   // the function to get the time from the RTC
   lcd.begin(16, 2);
 
@@ -218,11 +218,14 @@ void loop()
     //  lcd.scrollDisplayLeft();
     //  delay(700);
     //}  
-    resetLCD = 1;    
+    resetLCD = 1;   
+    digitalWrite(A2, HIGH); 
+    
   }
   if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){  
     lcd.home();  
     lcd.clear();
+    digitalWrite(A2,LOW);
     resetLCD = 0;
   }
 }
