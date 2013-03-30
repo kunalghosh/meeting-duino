@@ -131,7 +131,7 @@ LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
-char nextAppointment[MESSAGE_SIZE] = "201303292012:This is my message~";
+char nextAppointment[MESSAGE_SIZE] = "201303300330:Wake Up";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
 char *appointmentMessage;
