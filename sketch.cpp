@@ -132,7 +132,7 @@ const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 // initialize the library with the numbers of the interface pins
 
 
-char nextAppointment[MESSAGE_SIZE] = "201303300330:Wake Up";
+char nextAppointment[MESSAGE_SIZE] = "201303310729:Wake Up";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
 char *appointmentMessage;
@@ -177,7 +177,7 @@ void setup()  {
 
 void loop()
 {
-	
+
 	displayDateTime(); //display's date and time on the first row of the 16x2 LCD
 
 	if( ( millis() / 100000 ) % 100 == 0 ){// every one seconds
@@ -186,13 +186,15 @@ void loop()
 
 	if( !second() ){// when second == 0 i.e. after 59
 		getCurrentAdjustedTimeStamp();
+		Serial.println(timeStampAppointment);
+		Serial.println(timeStampCurrentAdj);
 	}
-	
-	//Serial.println(timeStampAppointment);
-	//Serial.println(timeStampCurrentAdj);
+
 
 	if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
 		getAppointmentMessage();
+		Serial.println(appointmentMessage);
+
 		messageLength = strlen(appointmentMessage);
 		lcd.setCursor(0,1);
 		lcd.print(appointmentMessage);
@@ -338,3 +340,4 @@ byte I2CEEPROM_Read(unsigned int address )
 	data = Wire.read();
 	return data;
 }
+
