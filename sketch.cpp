@@ -228,6 +228,7 @@ void displayDateTime(){
 
 	//lcd.setCursor(0, 1);
 	//lcd.print("Time: ");
+	lcd.print(" ");
 	displayNumLCD(hour());
 	blinkColon();
 	displayNumLCD(minute());
