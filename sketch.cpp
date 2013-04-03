@@ -109,27 +109,45 @@ int speakerPin = A3;
 
 // notes in the melody:
 int melody[] = {
-	NOTE_CS4,NOTE_C4, NOTE_D4, NOTE_C4,NOTE_F4,NOTE_E4,
-	NOTE_C4_1,NOTE_C4,NOTE_D4,NOTE_C4,NOTE_G4,NOTE_F4,
-	NOTE_C4_1,NOTE_C4,NOTE_C5,NOTE_A4,NOTE_F4,NOTE_E4,NOTE_D4,
-	NOTE_AS4,NOTE_AS4,NOTE_A4,NOTE_F4,NOTE_G4,NOTE_F4};
+  NOTE_CS4,NOTE_C4, NOTE_D4, NOTE_C4,NOTE_F4,NOTE_E4,
+  NOTE_C4_1,NOTE_C4,NOTE_D4,NOTE_C4,NOTE_G4,NOTE_F4,
+  NOTE_C4_1,NOTE_C4,NOTE_C5,NOTE_A4,NOTE_F4,NOTE_E4,NOTE_D4,
+  NOTE_AS4,NOTE_AS4,NOTE_A4,NOTE_F4,NOTE_G4,NOTE_F4};
 
 // note durations: 4 = quarter note, 8 = eighth note, etc.:
 int noteDurations[] = {
-	6, 6, 3, 3,3,3,
-	6, 6, 3, 3,3,3,
-	6, 6, 3, 3,3,3,3, 
-	6, 6, 3, 3,3,3 };
+  6, 6, 3, 3,3,3,
+  6, 6, 3, 3,3,3,
+  6, 6, 3, 3,3,3,3, 
+  6, 6, 3, 3,3,3 };
 
 
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
+// Assuming a 256KB EEPROM so total space = 256 * 1024, each appointment 
+// entry is 100Bytes hence ~ 2600 Entries max.
+#define ALL_APPOINTMENTS_BYTE_COUNT 2 // Bytes
+// While writing the appointments in EEPROM, the total number of characters ( byte count )
+// is stored in the first two bytes of the EEPROM
+// ( first byte value ) * 256 + ( second byte value ) = total number of bytes ( for all appointments ) in the EEPROM.
+
+#define NEXT_APPOINTMENT_POS 2 // Bytes
+// The third and fourth bytes are used to store the position of the next appointment in EEPROM.
+// This is useful in case the microcontroller looses power and is reset.
+// The byte address of the next appointment = ( third byte value ) * 256 + ( fourth byte value )
+
+// The first four bytes of the EEPROM must be correctly initialized otherwise the device will not behave correctly.
+
+/* Incase the microcontroller looses power before the next appointment address is written, or it is powered down
+ * and in the interim a lot of appointments are missed, then it should be able to resume from the next non expired appointment.
+ */
+
 #define MESSAGE_SIZE 100
 #define TIME_STAMP 13 // to add an ending \0 terminator where required. hence 12+1
 //#define NON_MESSAGE 14 //in an appointment string 201303282305 , : and ~ are not a part of message so 12 characters
-// initialize the library with the numbers of the interface pins
+
 
 
 char nextAppointment[MESSAGE_SIZE] = "201303310729:Wake Up";
@@ -149,6 +167,7 @@ char *appointmentMessage;
 //increment this everytime an appointment is met. 
 //The address from where you get the appointment is 100 * appointmentCount since each appointment is 100Bytes long
 int  appointmentCount = 0;
+int  appointmentCountMax = 0; //the byte count of the '~' of the last appointment
 
 char timeStampAppointment[TIME_STAMP+1]="";
 char timeStampCurrentAdj[TIME_STAMP]=""; // current time stamp adjusted by 'readBeforeMins' minutes
@@ -161,183 +180,192 @@ int  resetLCD = 0;
 
 
 void setup()  {
-	Serial.begin(9600);  
-	pinMode(piezoPin,OUTPUT);
-	//LCD led turn on.
-	pinMode(A2,OUTPUT);
-	//digitalWrite(A2,HIGH);//LCD LED backlight turn ON.
-	setSyncProvider(RTC.get);   // the function to get the time from the RTC
-	lcd.begin(16, 2);
+  Serial.begin(9600);  
+  pinMode(piezoPin,OUTPUT);
+  //LCD led turn on.
+  pinMode(A2,OUTPUT);
+  //digitalWrite(A2,HIGH);//LCD LED backlight turn ON.
+  setSyncProvider(RTC.get);   // the function to get the time from the RTC
+  lcd.begin(16, 2);
+  
+  getAppointmentLastByteCount();//the byte count of the '~' of the last appointment stored in appointmentCountMax
+  getNextAppointmentByteCount();//the start (byte) count of an appointment which hasn't expired yet.
 
-	//READ message from EEPROM
-	ReadNextAppointment(); 
-	getTimeStampFromAppointment();// this populates the timeStamp string
-	//populateDateVariables();
+  //READ message from EEPROM
+  ReadNextAppointment(); 
+  getTimeStampFromAppointment();// this populates the timeStamp string
+  //populateDateVariables();
 }
 
 void loop()
 {
 
-	displayDateTime(); //display's date and time on the first row of the 16x2 LCD
+  displayDateTime(); //display's date and time on the first row of the 16x2 LCD
 
-	if( ( millis() / 100000 ) % 100 == 0 ){// every one seconds
-		setSyncProvider(RTC.get);   // the function to get the time from the RTC
-	}
+  if( ( millis() / 100000 ) % 100 == 0 ){// every one seconds
+    setSyncProvider(RTC.get);   // the function to get the time from the RTC
+  }
 
-	if( !second() ){// when second == 0 i.e. after 59
-		getCurrentAdjustedTimeStamp();
-		Serial.println(timeStampAppointment);
-		Serial.println(timeStampCurrentAdj);
-	}
+  if( !second() ){// when second == 0 i.e. after 59
+    getCurrentAdjustedTimeStamp();
+    Serial.println(timeStampAppointment);
+    Serial.println(timeStampCurrentAdj);  
+  }
 
+  
+  if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
+    getAppointmentMessage();
+    Serial.println(appointmentMessage);
+ 
+    messageLength = strlen(appointmentMessage);
+    lcd.setCursor(0,1);
+    lcd.print(appointmentMessage);
 
-	if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
-		getAppointmentMessage();
-		Serial.println(appointmentMessage);
+    tune();
 
-		messageLength = strlen(appointmentMessage);
-		lcd.setCursor(0,1);
-		lcd.print(appointmentMessage);
+    lcd.scrollDisplayLeft();
+    resetLCD = 1;   
+    digitalWrite(A2, HIGH); 
+  }
 
-		tune();
-
-		lcd.scrollDisplayLeft();
-		resetLCD = 1;   
-		digitalWrite(A2, HIGH); 
-	}
-
-	if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){ 
-		// turns LCD backlight off 
-		// increments appointmentCount so that the next appointment is read.
-		lcd.home();  
-		lcd.clear();
-		digitalWrite(A2,LOW);
-		resetLCD = 0;
-		appointmentCount += 1;
-		ReadNextAppointment();
-		getTimeStampFromAppointment();
-	}
+  if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){ 
+    // turns LCD backlight off 
+    // increments appointmentCount so that the next appointment is read.
+    lcd.home();  
+    lcd.clear();
+    digitalWrite(A2,LOW);
+    resetLCD = 0;
+    //appointmentCount += 1;
+    ReadNextAppointment();
+    getTimeStampFromAppointment();
+  }
 }
 
 void displayDateTime(){
-	lcd.setCursor(0, 0);
-	//lcd.print("Date: ");
-	displayNumLCD(day());
-	lcd.print("/");
-	displayNumLCD(month());
-	lcd.print("/");
-	displayNumLCD(year());
+  lcd.setCursor(0, 0);
+  //lcd.print("Date: ");
+  displayNumLCD(day());
+  lcd.print("/");
+  displayNumLCD(month());
+  lcd.print("/");
+  displayNumLCD(year());
 
-	//lcd.setCursor(0, 1);
-	//lcd.print("Time: ");
-	lcd.print(" ");
-	displayNumLCD(hour());
-	blinkColon();
-	displayNumLCD(minute());
+  //lcd.setCursor(0, 1);
+  //lcd.print("Time: ");
+  lcd.print(" ");
+  displayNumLCD(hour());
+  blinkColon();
+  displayNumLCD(minute());
 
 }
 
 void tune(){
-	int thisNote = 0;
+  int thisNote = 0;
 
-	// divided by the note type.
-	//e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-	int noteDuration = 1000/noteDurations[thisNote];
-	tone(speakerPin, melody[thisNote],noteDuration);
+  // divided by the note type.
+  //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+  int noteDuration = 1000/noteDurations[thisNote];
+  tone(speakerPin, melody[thisNote],noteDuration);
 
-	int pauseBetweenNotes = noteDuration + 50;      //delay between pulse
-	delay(pauseBetweenNotes+100);
+  int pauseBetweenNotes = noteDuration + 50;      //delay between pulse
+  delay(pauseBetweenNotes+100);
 
-	noTone(speakerPin);                // stop the tone playing
+  noTone(speakerPin);                // stop the tone playing
 } 
 
 void getCurrentAdjustedTimeStamp(){
-	sprintf(timeStampCurrentAdj,"%d%02d%02d%02d%02d",year(),month(),day(),hour(),minute()-remindBeforeMins);
+  sprintf(timeStampCurrentAdj,"%d%02d%02d%02d%02d",year(),month(),day(),hour(),minute()-remindBeforeMins);
 }
 
 void getTimeStampFromAppointment(){// this populates the timeStamp string
-	strncpy(timeStampAppointment,readAppointment,sizeof(timeStampAppointment));
-	//strncpy(timeStampAppointment,nextAppointment,sizeof(timeStampAppointment));
-	timeStampAppointment[TIME_STAMP-1]='\0';
+  strncpy(timeStampAppointment,readAppointment,sizeof(timeStampAppointment));
+  //strncpy(timeStampAppointment,nextAppointment,sizeof(timeStampAppointment));
+  timeStampAppointment[TIME_STAMP-1]='\0';
 }
 
 void getAppointmentMessage(){
-	//strcpy(appointmentMessage,nextAppointment);
-	strcpy(appointmentMessage,readAppointment);
-	char *messageEnd = strchr(appointmentMessage,'~');
-	//char *messageEnd = strchr(nextAppointment,'~');
-	messageEnd = '\0';
-	//appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
-	appointmentMessage = readAppointment + 13; // remove the starting timeStamp
+  //strcpy(appointmentMessage,nextAppointment);
+  strcpy(appointmentMessage,readAppointment);
+  char *messageEnd = strchr(appointmentMessage,'~');
+  //char *messageEnd = strchr(nextAppointment,'~');
+  messageEnd = '\0';
+  //appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
+  appointmentMessage = readAppointment + 13; // remove the starting timeStamp
 }
 
 void blinkColon(){
-	if(second() % 2 == 0)
-		lcd.print(":");
-	else
-		lcd.print(" ");
+  if(second() % 2 == 0)
+    lcd.print(":");
+  else
+    lcd.print(" ");
 }
 
 void displayNumLCD(int value){
-	/* This logic is used in cases where there is a cyclic counting of
-	 * numbers happening. i.e. when counting seconds (0 to 59), minutes ( 0 to 59) etc.
-	 * when after 59 , 0 is displayed, lcd shows it as 09. The 9 of 59 is not cleared.
-	 * So, we can either do lcd.clear() repeatedly. Or make single digit numbers double digit
-	 * by adding a 0 in front of them.
-	 *
-	 * NOTE : This logic will not work if the cyclic count is of 3 digits, 0 to 999
-	 * In that case the logic would have to be different. It will be. single digit numbers prepend two zeros.
-	 * two digit numbers prepend one zero and for 3 digit numbers prepend no zeros."
-	 */
-	if(value < 10){
-		lcd.print("0");
-	}
-	lcd.print(value);
+  /* This logic is used in cases where there is a cyclic counting of
+   	 * numbers happening. i.e. when counting seconds (0 to 59), minutes ( 0 to 59) etc.
+   	 * when after 59 , 0 is displayed, lcd shows it as 09. The 9 of 59 is not cleared.
+   	 * So, we can either do lcd.clear() repeatedly. Or make single digit numbers double digit
+   	 * by adding a 0 in front of them.
+   	 *
+   	 * NOTE : This logic will not work if the cyclic count is of 3 digits, 0 to 999
+   	 * In that case the logic would have to be different. It will be. single digit numbers prepend two zeros.
+   	 * two digit numbers prepend one zero and for 3 digit numbers prepend no zeros."
+   	 */
+  if(value < 10){
+    lcd.print("0");
+  }
+  lcd.print(value);
+}
+
+void getAppointmentLastByteCount(){//the byte count of the '~' of the last appointment and store it in appointmentCountMax 
+}
+void getNextAppointmentByteCount(){//the start (byte) count of an appointment which hasn't expired yet.
 }
 
 void ReadNextAppointment(){
-	for ( appointmentCount; appointmentCount < 100 ; appointmentCount++)//not initialized to zero everytime so that the count is maintained.
-	{
-		char c = I2CEEPROM_Read(appointmentCount);
-		readAppointment[appointmentCount] = c;
-		//      Serial.print(c);
+  for ( appointmentCount; appointmentCount < appointmentCountMax ; appointmentCount++)//not initialized to zero everytime so that the count is maintained.
+  {
+    char c = I2CEEPROM_Read(appointmentCount);
+    readAppointment[appointmentCount] = c;
+    //      Serial.print(c);
 
-		if(c == '~')
-		{
-			//readAppointment[++appointmentCount] = '\0';
-			readAppointment[appointmentCount] = '\0';
-			//Serial.println();
-			break;     // start over on a new line
-		}
-	}
+    if(c == '~')
+    {
+      //readAppointment[++appointmentCount] = '\0';
+      readAppointment[appointmentCount] = '\0';
+      //Serial.println();
+      break;     // start over on a new line
+    }
+  }
 
-	//Serial.println(readAppointment);
+  //Serial.println(readAppointment);
 }
 
 
 // This function is similar to EEPROM.write()
 void I2CEEPROM_Write( unsigned int address, byte data )
 {
-	Wire.beginTransmission(EEPROM_ID);
-	Wire.write((int)highByte(address) );
-	Wire.write((int)lowByte(address) );
-	Wire.write(data);
-	Wire.endTransmission();
-	delay(5); // wait for the I2C EEPROM to complete the write cycle
+  Wire.beginTransmission(EEPROM_ID);
+  Wire.write((int)highByte(address) );
+  Wire.write((int)lowByte(address) );
+  Wire.write(data);
+  Wire.endTransmission();
+  delay(5); // wait for the I2C EEPROM to complete the write cycle
 }
 
 // This function is similar to EEPROM.read()
 byte I2CEEPROM_Read(unsigned int address )
 {
-	byte data;
-	Wire.beginTransmission(EEPROM_ID);
-	Wire.write((int)highByte(address) );
-	Wire.write((int)lowByte(address) );
-	Wire.endTransmission();
-	Wire.requestFrom(EEPROM_ID,(byte)1);
-	while(Wire.available() == 0) // wait for data
-		;
-	data = Wire.read();
-	return data;
+  byte data;
+  Wire.beginTransmission(EEPROM_ID);
+  Wire.write((int)highByte(address) );
+  Wire.write((int)lowByte(address) );
+  Wire.endTransmission();
+  Wire.requestFrom(EEPROM_ID,(byte)1);
+  while(Wire.available() == 0) // wait for data
+    ;
+  data = Wire.read();
+  return data;
 }
+
 
