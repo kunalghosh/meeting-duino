@@ -260,7 +260,7 @@ void getNextUnExpiredAppointment(){
 		else if(getAppointmentTimeStampWithoutYear() < currentTimeStampWithoutYear)
 			continue;
 		else 
-			break
+			break;
 		if ( minute() != oldMin ){
 			currentTimeStampWithoutYear = getCurrentTimeStampWithoutYear(); 
 			oldMin = minute();
