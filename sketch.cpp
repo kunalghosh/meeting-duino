@@ -167,8 +167,8 @@ char *appointmentMessage;
 // Increment this everytime an appointment is met. 
 // At any given instant the below variable stores 
 // the start byte count of the next appointment.
-int  appointmentCurrentByteAddress = 0;
-
+int  nextAppointmentByteAddress = 0;
+int  currentAppointmentStartByteAddress = 0;
 //the byte count of the '~' of the last appointment
 int  appointmentLastByteAddress = 0;
 
@@ -236,17 +236,43 @@ void loop()
 
 	if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){ 
 		// turns LCD backlight off 
-		// increments appointmentCurrentByteAddress so that the next appointment is read.
+		// increments nextAppointmentByteAddress so that the next appointment is read.
 		lcd.home();  
 		lcd.clear();
 		digitalWrite(A2,LOW);
 		resetLCD = 0;
-		//appointmentCurrentByteAddress += 1;
+		//nextAppointmentByteAddress += 1;
 		ReadNextAppointment();
 		getTimeStampFromAppointment();
 	}
+	if ( Serial.available() ){
+		char ch = Serial.read();
+		switch (ch){
+			case 'T':RTCWrite();
+				 setSyncProvider(RTC.get);   // the function to get the time from the RTC
+				 break;
+			case 'A':APPOINTMENTWrite();
+				 break;
+			default :break;
+		}
+	}
 }
 
+#define TIME_MSG_LEN  10   // time sync to PC is HEADER followed by unix time_t as ten ascii digits
+
+void RTCWrite(){
+
+	time_t pctime = 0;
+	for(int i=0; i < TIME_MSG_LEN ; i++){   
+		c = Serial.read();          
+		if( c >= '0' && c <= '9'){   
+			pctime = (10 * pctime) + (c - '0') ; // convert digits to a number    
+		}
+	}   
+
+	RTC.set(pctime);   // set the RTC and the system time to the received value
+	setTime(pctime);          
+}
 void getNextUnExpiredAppointment(){
 	// Keep Reading the Next Appointment till you get an appointment which has not expired.
 	// All subsequent appointments must ( by design ) , be also valid ( not expired ).
@@ -267,6 +293,18 @@ void getNextUnExpiredAppointment(){
 		}
 
 	}
+	setNextUnexpiredAppointmentPos();
+}
+
+void setNextUnexpiredAppointmentPos(){
+	// write back the next UnExpired appointment byte position to the EEPROM
+	// Verify if the byte position is < = 256 * NEXT_APPOINTMENT_POS + 256
+	int copyOfCurrentAppointmentStartByteAddress = currentAppointmentStartByteAddress;
+	for ( int nextUnexpiredByteAddress = NEXT_APPOINTMENT_POS + ALL_APPOINTMENTS_BYTE_COUNT - 1 ; nextUnexpiredByteAddress > ALL_APPOINTMENTS_BYTE_COUNT - 1 ; nextUnexpiredByteAddress-- ){
+		I2CEEPROM_Write(nextUnexpiredByteAddress,itoa(copyOfCurrentAppointmentStartByteAddress%256)); 
+		copyOfCurrentAppointmentStartByteAddress /= 256;
+	}
+
 }
 
 unsigned long getAppointmentTimeStampWithoutYear(){
@@ -413,7 +451,7 @@ void getAppointmentLastByteCount(){//the byte count of the '~' of the last appoi
 // See comment under #define ALL_APPOINTMENTS_BYTE_COUNT
 // From the 1st Byte of EEPROM to the ALL_APPOINTMENTS_BYTE_COUNT'th - 1 byte
 	for( int EEPROMByteCount = 0 ;  EEPROMByteCount < ALL_APPOINTMENTS_BYTE_COUNT ;  EEPROMByteCount++ ){
-		char c = I2CEEPROM_Read(EEPROMByteCount);
+		char c = I2CEEPROM_Read(EEPROzMByteCount);
 		if ( EEPROMByteCount != ALL_APPOINTMENTS_BYTE_COUNT - 1 )
 			appointmentLastByteAddress = 256 * atoi(c);
 	}
@@ -422,33 +460,34 @@ void getAppointmentLastByteCount(){//the byte count of the '~' of the last appoi
 void getNextAppointmentByteCount(){//the start (byte) count of an appointment which hasn't expired yet.
 // See comment under #define NEXT_APPOINTMENT_POS
 // From the ALL_APPOINTMENTS_BYTE_COUNT'th Byte to the NEXT_APPOINTMENT_POS - 1 byte
-	int lastByteAddress = ALL_APPOINTMENTS_BYTE_COUNT+NEXT_APPOINTMENT_POS;
+	int lastByteAddress = ALL_APPOINTMENTS_BYTE_COUNT+NEXT_APPOINTMENT_POS; //The byte position upto which to read
 	for( int EEPROMByteCount = ALL_APPOINTMENTS_BYTE_COUNT ;  EEPROMByteCount < lastByteAddress  ;  EEPROMByteCount++ ){
 		char c = I2CEEPROM_Read(EEPROMByteCount);
 		if ( EEPROMByteCount != lastByteAddress - 1 )
-			appointmentLastByteAddress = 256 * atoi(c);
+			appointmentLastByteAddzress = 256 * atoi(c);
 	}
-	appointmentLastByteAddress += atoi(c);
+	nextAppointmentByteAddress += atoi(c);
 }
 
 void ReadNextAppointment(){
-	for ( appointmentCurrentByteAddress ; appointmentCurrentByteAddress < appointmentLastByteAddress ; appointmentCurrentByteAddress++)
+	currentAppointmentStartByteAddress = nextAppointmentByteAddress ;
+	for ( nextAppointmentByteAddress ; nextAppointmentByteAddress < appointmentLastByteAddress ; nextAppointmentByteAddress++)
 	//not initialized to zero everytime so that the count is maintained.
 	{
-		char c = I2CEEPROM_Read(appointmentCurrentByteAddress);
-		readAppointment[appointmentCurrentByteAddress] = c;
+		char c = I2CEEPROM_Read(nextAppointmentByteAddress);
+		readAppointment[nextAppointmentByteAddress] = c;
 		//      Serial.print(c);
 
 		if(c == '~')
 		{
-			//readAppointment[++appointmentCurrentByteAddress] = '\0';
-			readAppointment[appointmentCurrentByteAddress] = '\0';
+			readAppointment[nextAppointmentByteAddress++] = '\0';
+			//readAppointment[nextAppointmentByteAddress] = '\0';
 			//Serial.println();
 			break;     // start over on a new line
 		}
 	}
-
 	//Serial.println(readAppointment);
+	setNextUnexpiredAppointmentPos();	
 }
 
 
