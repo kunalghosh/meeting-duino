@@ -150,7 +150,7 @@ const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 
 
 
-char nextAppointment[MESSAGE_SIZE] = "201303310729:Wake Up";
+//char nextAppointment[MESSAGE_SIZE] = "201303310729:Wake Up";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
 char *appointmentMessage;
@@ -190,17 +190,27 @@ void setup()  {
 	//digitalWrite(A2,HIGH);//LCD LED backlight turn ON.
 	setSyncProvider(RTC.get);   // the function to get the time from the RTC
 	lcd.begin(16, 2);
-
+        
+        Serial.println("Getting All Appointments' Last Byte Address.");
 	getAppointmentLastByteCount();//the byte count of the '~' of the last appointment stored in appointmentLastByteAddress
+        Serial.println("All Appointments' last byte address is:");
+        Serial.println(appointmentLastByteAddress);
 	getNextAppointmentByteCount();//the start (byte) count of an appointment which hasn't expired yet.
-
+        Serial.println("nextAppointmentByteAddress is");
+        Serial.println(nextAppointmentByteAddress);
 	//READ message from EEPROM
 	//ReadNextAppointment(); 
 
 	getNextUnExpiredAppointment();
-
+        Serial.println("Next Unexpired Appointment Address is :");
+        Serial.println(nextAppointmentByteAddress);
+        Serial.println(readAppointment);
+        
 	getTimeStampFromAppointment();// this populates the timeStamp string
 	//populateDateVariables();
+        Serial.println("Time Stamp from appointment");
+        Serial.println(timeStampAppointment);
+        
 }
 
 void loop()
@@ -278,17 +288,20 @@ void RTCWrite(){
 void getNextUnExpiredAppointment(){
 	// Keep Reading the Next Appointment till you get an appointment which has not expired.
 	// All subsequent appointments must ( by design ) , be also valid ( not expired ).
+        Serial.println("Inside getNextUnExpiredAppointment()");
+
 	int oldMin = minute();
 	unsigned long currentTimeStampWithoutYear = getCurrentTimeStampWithoutYear(); 
-	while(1){
+
+	while(nextAppointmentByteAddress < appointmentLastByteAddress){
 		ReadNextAppointment();
 		getTimeStampFromAppointment();//timeStampAppointment
 		if(getAppointmentYear() < year())
 			continue;
+                else if(getAppointmentYear() > year())
+                        break;
 		else if(getAppointmentTimeStampWithoutYear() < currentTimeStampWithoutYear)
 			continue;
-		else 
-			break;
 		if ( minute() != oldMin ){
 			currentTimeStampWithoutYear = getCurrentTimeStampWithoutYear(); 
 			oldMin = minute();
@@ -296,19 +309,25 @@ void getNextUnExpiredAppointment(){
 
 	}
 	setNextUnexpiredAppointmentPos();
+        getNextAppointmentByteCount();
+        Serial.println("Going out of : getNextUnExpiredAppointment()");
 }
 
 void setNextUnexpiredAppointmentPos(){
 	// write back the next UnExpired appointment byte position to the EEPROM
 	// Verify if the byte position is < = 256 * NEXT_APPOINTMENT_POS + 256
 	int copyOfCurrentAppointmentStartByteAddress = currentAppointmentStartByteAddress;
+        Serial.println("Inside setNextUnexpiredAppointmentPos()");
+
+        Serial.print("currentAppointmentStartByteAddress :");
+        Serial.print(currentAppointmentStartByteAddress);
         char ch;
 	for ( int nextUnexpiredByteAddress = NEXT_APPOINTMENT_POS + ALL_APPOINTMENTS_BYTE_COUNT - 1 ; nextUnexpiredByteAddress > ALL_APPOINTMENTS_BYTE_COUNT - 1 ; nextUnexpiredByteAddress-- ){
                 ch = copyOfCurrentAppointmentStartByteAddress%256;
 		I2CEEPROM_Write(nextUnexpiredByteAddress,ch); 
 		copyOfCurrentAppointmentStartByteAddress /= 256;
 	}
-
+        Serial.println("Going out of: setNextUnexpiredAppointmentPos()");
 }
 
 unsigned long getAppointmentTimeStampWithoutYear(){
@@ -469,32 +488,48 @@ void getAppointmentLastByteCount(){//the byte count of the '~' of the last appoi
 void getNextAppointmentByteCount(){//the start (byte) count of an appointment which hasn't expired yet.
 // See comment under #define NEXT_APPOINTMENT_POS
 // From the ALL_APPOINTMENTS_BYTE_COUNT'th Byte to the NEXT_APPOINTMENT_POS - 1 byte
+        Serial.println("Inside : getNextAppointmentByteCount()");
         char c;
         int d;
 	int lastByteAddress = ALL_APPOINTMENTS_BYTE_COUNT+NEXT_APPOINTMENT_POS; //The byte position upto which to read
+        Serial.println("lastByteAddress is :");
+        Serial.println(lastByteAddress);
 	for( int EEPROMByteCount = ALL_APPOINTMENTS_BYTE_COUNT ;  EEPROMByteCount < lastByteAddress  ;  EEPROMByteCount++ ){
 		c = I2CEEPROM_Read(EEPROMByteCount);
+                d = 0;
                 d = c;
-		if ( EEPROMByteCount != lastByteAddress - 1 )
-			appointmentLastByteAddress = 256 * d;
+                Serial.print("C inside loop: ");
+                Serial.println(c);
+		if ( EEPROMByteCount != lastByteAddress - 1 ){
+			nextAppointmentByteAddress = 256 * d;
+                        Serial.print("d inside loop:");          
+                        Serial.println(d);          
+                }
 	}
+        Serial.print("d:");
+        Serial.println(d);
 	nextAppointmentByteAddress += d;
+        Serial.println("nextAppointmentByteAddress is:");
+        Serial.println(nextAppointmentByteAddress);        
+        Serial.println("Going Out Of : getNextAppointmentByteCount()");
 }
 
 void ReadNextAppointment(){
 	currentAppointmentStartByteAddress = nextAppointmentByteAddress ;
-	for ( nextAppointmentByteAddress ; nextAppointmentByteAddress < appointmentLastByteAddress ; nextAppointmentByteAddress++)
+        int readAppointmentCounter = 0;
+	for ( nextAppointmentByteAddress ; nextAppointmentByteAddress < appointmentLastByteAddress ; nextAppointmentByteAddress++,readAppointmentCounter++)
 	//not initialized to zero everytime so that the count is maintained.
 	{
 		char c = I2CEEPROM_Read(nextAppointmentByteAddress);
-		readAppointment[nextAppointmentByteAddress] = c;
+		readAppointment[readAppointmentCounter] = c;
 		//      Serial.print(c);
 
 		if(c == '~')
 		{
-			readAppointment[nextAppointmentByteAddress++] = '\0';
+			readAppointment[readAppointmentCounter] = '\0';
 			//readAppointment[nextAppointmentByteAddress] = '\0';
 			//Serial.println();
+                        readAppointmentCounter = 0;
 			break;     // start over on a new line
 		}
 	}
@@ -528,5 +563,6 @@ byte I2CEEPROM_Read(unsigned int address )
 	data = Wire.read();
 	return data;
 }
+
 
 
