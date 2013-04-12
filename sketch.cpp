@@ -230,20 +230,24 @@ void loop()
       getCurrentAdjustedTimeStamp();
       Serial.println(timeStampAppointment);
       Serial.println(timeStampCurrentAdj);
+      getAppointmentMessage();
     }
     if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
-      getAppointmentMessage();
+      //getAppointmentMessage();
+      Serial.print("Matched appointmentMessage : ");
       Serial.println(appointmentMessage);
 
-      messageLength = strlen(appointmentMessage);
+      //messageLength = strlen(appointmentMessage);
       lcd.setCursor(0,1);
       lcd.print(appointmentMessage);
-
+      delay(1000);
       tune();
-
+      displayDateTime();
       lcd.scrollDisplayLeft();
       resetLCD = 1;
+      //loop();
       digitalWrite(A2, HIGH);
+
     }
 
     if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){
@@ -336,6 +340,8 @@ void getNextUnExpiredAppointment(){
       break;
     else if( appointmentTimeStampWithoutYear < currentTimeStampWithoutYear)
       continue;
+    else
+      break;
     if ( minute() != oldMin ){
       currentTimeStampWithoutYear = getCurrentTimeStampWithoutYear();
       oldMin = minute();
