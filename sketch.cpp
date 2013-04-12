@@ -191,10 +191,10 @@ void setup()  {
 	setSyncProvider(RTC.get);   // the function to get the time from the RTC
 	lcd.begin(16, 2);
         
-        Serial.println("Getting All Appointments' Last Byte Address.");
+        //Serial.println("Getting All Appointments' Last Byte Address.");
 	getAppointmentLastByteCount();//the byte count of the '~' of the last appointment stored in appointmentLastByteAddress
-        Serial.println("All Appointments' last byte address is:");
-        Serial.println(appointmentLastByteAddress);
+        //Serial.println("All Appointments' last byte address is:");
+        //Serial.println(appointmentLastByteAddress);
 	getNextAppointmentByteCount();//the start (byte) count of an appointment which hasn't expired yet.
         Serial.println("nextAppointmentByteAddress is");
         Serial.println(nextAppointmentByteAddress);
@@ -292,10 +292,10 @@ void getNextUnExpiredAppointment(){
 
 	int oldMin = minute();
         int appointmentYear;
-        int appointmentTimeStampWithoutYear;
+        unsigned long appointmentTimeStampWithoutYear;
         
 	unsigned long currentTimeStampWithoutYear = getCurrentTimeStampWithoutYear(); 
-        Serial.println("Got the Current Time Stamp without Year");
+        //Serial.println("Got the Current Time Stamp without Year");
 	while(nextAppointmentByteAddress < appointmentLastByteAddress){
                 Serial.println("Entered the loop");
 	
@@ -303,9 +303,14 @@ void getNextUnExpiredAppointment(){
 		getTimeStampFromAppointment();//timeStampAppointment
         
                 appointmentYear = getAppointmentYear();
+                Serial.print("getAppointmentYear() : ");
+                Serial.println(appointmentYear);
+                
                 appointmentTimeStampWithoutYear = getAppointmentTimeStampWithoutYear();
                 
-                Serial.print("getAppointmentYear() : ");
+                Serial.print("getAppointmentYear() 2nd : ");
+                Serial.println(appointmentYear);
+                
                 Serial.println(appointmentYear);
                 
                 Serial.print("getAppointmentTimeStampWithoutYear() : ");
@@ -372,15 +377,20 @@ unsigned long getAppointmentTimeStampWithoutYear(){
 	timeStampAppointmentCopy[2] = '0';
 	timeStampAppointmentCopy[3] = '0';
         
-        Serial.print("timeStampAppointment");
-        Serial.println(timeStampAppointment);
+        //Serial.print("timeStampAppointment");
+        //Serial.println(timeStampAppointment);
         
+        unsigned long longTimeStampWithoutYear = atol(timeStampAppointmentCopy);
         
         Serial.print("timeStampAppointmentCopy");
         Serial.println(timeStampAppointmentCopy);
         
+        Serial.print("atol(timeStampAppointmentCopy)");
+        Serial.println(longTimeStampWithoutYear);
+        
+        
         Serial.println("Going out of : getAppointmentTimeStampWithoutYear()");      	
-	return (atol(timeStampAppointmentCopy));
+	return (longTimeStampWithoutYear);
 }
 unsigned long getCurrentTimeStampWithoutYear(){
 
@@ -562,30 +572,30 @@ void getAppointmentLastByteCount(){//the byte count of the '~' of the last appoi
 void getNextAppointmentByteCount(){//the start (byte) count of an appointment which hasn't expired yet.
 // See comment under #define NEXT_APPOINTMENT_POS
 // From the ALL_APPOINTMENTS_BYTE_COUNT'th Byte to the NEXT_APPOINTMENT_POS - 1 byte
-        Serial.println("Inside : getNextAppointmentByteCount()");
+        //Serial.println("Inside : getNextAppointmentByteCount()");
         char c;
         int d;
 	int lastByteAddress = ALL_APPOINTMENTS_BYTE_COUNT+NEXT_APPOINTMENT_POS; //The byte position upto which to read
-        Serial.println("lastByteAddress is :");
-        Serial.println(lastByteAddress);
+        //Serial.println("lastByteAddress is :");
+        //Serial.println(lastByteAddress);
 	for( int EEPROMByteCount = ALL_APPOINTMENTS_BYTE_COUNT ;  EEPROMByteCount < lastByteAddress  ;  EEPROMByteCount++ ){
 		c = I2CEEPROM_Read(EEPROMByteCount);
                 d = 0;
                 d = c;
-                Serial.print("C inside loop: ");
-                Serial.println(c);
+                //Serial.print("C inside loop: ");
+                //Serial.println(c);
 		if ( EEPROMByteCount != lastByteAddress - 1 ){
 			nextAppointmentByteAddress = 256 * d;
-                        Serial.print("d inside loop:");          
-                        Serial.println(d);          
+                        //Serial.print("d inside loop:");          
+                        //Serial.println(d);          
                 }
 	}
-        Serial.print("d:");
-        Serial.println(d);
+        //Serial.print("d:");
+        //Serial.println(d);
 	nextAppointmentByteAddress += d;
-        Serial.println("nextAppointmentByteAddress is:");
-        Serial.println(nextAppointmentByteAddress);        
-        Serial.println("Going Out Of : getNextAppointmentByteCount()");
+        //Serial.println("nextAppointmentByteAddress is:");
+        //Serial.println(nextAppointmentByteAddress);        
+        //Serial.println("Going Out Of : getNextAppointmentByteCount()");
 }
 
 void ReadNextAppointment(){
