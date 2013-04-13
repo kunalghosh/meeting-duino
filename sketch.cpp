@@ -230,20 +230,22 @@ void loop()
       getCurrentAdjustedTimeStamp();
       Serial.println(timeStampAppointment);
       Serial.println(timeStampCurrentAdj);
-      getAppointmentMessage();
+      //getAppointmentMessage();
     }
     if(!strcmp(timeStampAppointment,timeStampCurrentAdj)){
-      //getAppointmentMessage();
+      getAppointmentMessage();
       Serial.print("Matched appointmentMessage : ");
       Serial.println(appointmentMessage);
 
       //messageLength = strlen(appointmentMessage);
       lcd.setCursor(0,1);
       lcd.print(appointmentMessage);
-      delay(1000);
+      //delay(500);
       tune();
+
+      lcd.home();
       displayDateTime();
-      lcd.scrollDisplayLeft();
+      //lcd.scrollDisplayLeft();
       resetLCD = 1;
       //loop();
       digitalWrite(A2, HIGH);
@@ -322,15 +324,15 @@ void getNextUnExpiredAppointment(){
 
     //appointmentTimeStampWithoutYear = getAppointmentTimeStampWithoutYear();//keeping it here causes appointmentYear to change its value
 
-    Serial.print("getAppointmentYear() 2nd : ");
-    Serial.println(appointmentYear);
+    //Serial.print("getAppointmentYear() 2nd : ");
+    //Serial.println(appointmentYear);
 
 
-    Serial.print("getAppointmentTimeStampWithoutYear() : ");
-    Serial.println(appointmentTimeStampWithoutYear);
+    //Serial.print("getAppointmentTimeStampWithoutYear() : ");
+    //Serial.println(appointmentTimeStampWithoutYear);
 
-    Serial.print("nextAppointmentByteAddress : ");
-    Serial.println(nextAppointmentByteAddress);
+    //Serial.print("nextAppointmentByteAddress : ");
+    //Serial.println(nextAppointmentByteAddress);
 
 
 
@@ -358,30 +360,30 @@ void getNextUnExpiredAppointment(){
     lcd.setCursor(0,1);
     lcd.print("No New Appointments");
     noMoreAppointments = 1;
-    Serial.println("Going out of : getNextUnExpiredAppointment()");
+    //Serial.println("Going out of : getNextUnExpiredAppointment()");
     return;
   }
   setNextUnexpiredAppointmentPos();
   getNextAppointmentByteCount();
-  Serial.println("Going out of : getNextUnExpiredAppointment()");
+  //Serial.println("Going out of : getNextUnExpiredAppointment()");
 }
 
 void setNextUnexpiredAppointmentPos(){
   // write back the next UnExpired appointment byte position to the EEPROM
   // Verify if the byte position is < = 256 * NEXT_APPOINTMENT_POS + 256
 
-  Serial.println("Inside setNextUnexpiredAppointmentPos()");
+  //Serial.println("Inside setNextUnexpiredAppointmentPos()");
 
   int copyOfCurrentAppointmentStartByteAddress = currentAppointmentStartByteAddress;
-  Serial.print("currentAppointmentStartByteAddress :");
-  Serial.print(currentAppointmentStartByteAddress);
+  //Serial.print("currentAppointmentStartByteAddress :");
+  //Serial.print(currentAppointmentStartByteAddress);
   char ch;
   for ( int nextUnexpiredByteAddress = NEXT_APPOINTMENT_POS + ALL_APPOINTMENTS_BYTE_COUNT - 1 ; nextUnexpiredByteAddress > ALL_APPOINTMENTS_BYTE_COUNT - 1 ; nextUnexpiredByteAddress-- ){
     ch = copyOfCurrentAppointmentStartByteAddress%256;
     I2CEEPROM_Write(nextUnexpiredByteAddress,ch);
     copyOfCurrentAppointmentStartByteAddress /= 256;
   }
-  Serial.println("Going out of: setNextUnexpiredAppointmentPos()");
+  //Serial.println("Going out of: setNextUnexpiredAppointmentPos()");
 }
 
 unsigned long getAppointmentTimeStampWithoutYear(){
@@ -550,12 +552,30 @@ void getTimeStampFromAppointment(){// this populates the timeStamp string
 
 void getAppointmentMessage(){
   //strcpy(appointmentMessage,nextAppointment);
-  strcpy(appointmentMessage,readAppointment);
+  //strcpy(appointmentMessage,readAppointment);
+  appointmentMessage = readAppointment;
+  appointmentMessage += 13;
+  /*
+  Serial.println("Inside getAppointmentMessage()");
+   int j;
+   Serial.print("readAppointment[13] : ");
+   Serial.println(readAppointment[13]);
+
+   for(int i = 13,j=0 ; readAppointment[i] != '~' ; i++,j++){
+   appointmentMessage[j] = readAppointment[i];
+   }
+   appointmentMessage[j]='\0';
+   Serial.print("appointmentMessage : ");
+   Serial.println(appointmentMessage);
+   Serial.println("Going out of : getAppointmentMessage()");
+   */
+  /*
   char *messageEnd = strchr(appointmentMessage,'~');
-  //char *messageEnd = strchr(nextAppointment,'~');
-  messageEnd = '\0';
-  //appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
-  appointmentMessage = readAppointment + 13; // remove the starting timeStamp
+   //char *messageEnd = strchr(nextAppointment,'~');
+   messageEnd = '\0';
+   //appointmentMessage = nextAppointment + 13; // remove the starting timeStamp
+   appointmentMessage = readAppointment + 13; // remove the starting timeStamp
+   */
 }
 
 void blinkColon(){
@@ -680,8 +700,3 @@ byte I2CEEPROM_Read(unsigned int address )
   data = Wire.read();
   return data;
 }
-
-
-
-
-
