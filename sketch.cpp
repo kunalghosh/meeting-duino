@@ -253,8 +253,8 @@ void loop()
     }
   }
 
-  if((nextAppointmentByteAddress == appointmentLastByteAddress) && noMoreAppointments != 1){ //if there are no more appointments do not come into this section again.
-    currentAppointmentStartByteAddress = appointmentLastByteAddress;
+  if((currentAppointmentStartByteAddress == appointmentLastByteAddress) && noMoreAppointments != 1){ //if there are no more appointments do not come into this section again.
+    //currentAppointmentStartByteAddress = appointmentLastByteAddress;
     //since we have reached the end of the last appointment set the currentAppointmentStartByteAddress
     //to the appointment Last Byte address.
     //This is an indication that there are no new appointments.
@@ -336,15 +336,16 @@ void getNextUnExpiredAppointment(){
     }
     Serial.println("Still in the loop");
   }
-  if((nextAppointmentByteAddress == appointmentLastByteAddress) && noMoreAppointments != 1){ //if there are no more appointments do not come into this section again.
+  //if((nextAppointmentByteAddress == appointmentLastByteAddress) && noMoreAppointments != 1){ //if there are no more appointments do not come into this section again.
+  if(nextAppointmentByteAddress == appointmentLastByteAddress){
     currentAppointmentStartByteAddress = appointmentLastByteAddress;
     //since we have reached the end of the last appointment set the currentAppointmentStartByteAddress
     //to the appointment Last Byte address.
     //This is an indication that there are no new appointments.
 
-    Serial.println("No New Appointments.");
-    lcd.setCursor(0,1);
-    lcd.print("No New Appointments");
+    //Serial.println("No New Appointments.");
+    //lcd.setCursor(0,1);
+    //lcd.print("No New Appointments");
     noMoreAppointments = 1;
     return;
   }
