@@ -253,7 +253,7 @@ void loop()
     }
   }
 
-  if(currentAppointmentStartByteAddress == appointmentLastByteAddress){ //if there are no more appointments do not come into this section again.
+  if(nextAppointmentByteAddress == appointmentLastByteAddress){ //if there are no more appointments do not come into this section again.
     //currentAppointmentStartByteAddress = appointmentLastByteAddress;
     //since we have reached the end of the last appointment set the currentAppointmentStartByteAddress
     //to the appointment Last Byte address.
