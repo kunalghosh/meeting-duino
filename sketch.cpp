@@ -153,7 +153,7 @@ const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 //char nextAppointment[MESSAGE_SIZE] = "201303310729:Wake Up";
 char readAppointment[MESSAGE_SIZE] = "";
 //char appointmentMessage[MESSAGE_SIZE] = "";
-char *appointmentMessage;
+char *appointmentMessage = NULL;
 // First few bytes are reserved for the time of Appointment
 // YYYYMMDDHHmm
 // Y year
@@ -255,6 +255,7 @@ void loop()
     if(strcmp(timeStampAppointment,timeStampCurrentAdj) && resetLCD){
       // turns LCD backlight off
       // increments nextAppointmentByteAddress so that the next appointment is read.
+      Serial.println("Completed a meeting schedule.");
       lcd.home();
       lcd.clear();
       digitalWrite(A2,LOW);
@@ -263,6 +264,19 @@ void loop()
       ReadNextAppointment();
       getTimeStampFromAppointment();
     }
+  }
+
+  if((nextAppointmentByteAddress == appointmentLastByteAddress) && noMoreAppointments != 1){ //if there are no more appointments do not come into this section again.
+    currentAppointmentStartByteAddress = appointmentLastByteAddress;
+    //since we have reached the end of the last appointment set the currentAppointmentStartByteAddress
+    //to the appointment Last Byte address.
+    //This is an indication that there are no new appointments.
+
+    Serial.println("No New Appointments.");
+    lcd.setCursor(0,1);
+    lcd.print("No New Appointments");
+    noMoreAppointments = 1;
+    //Serial.println("Going out of : getNextUnExpiredAppointment()");
   }
 
   if ( Serial.available() ){
@@ -350,7 +364,7 @@ void getNextUnExpiredAppointment(){
     }
     Serial.println("Still in the loop");
   }
-  if(nextAppointmentByteAddress == appointmentLastByteAddress){
+  if((nextAppointmentByteAddress == appointmentLastByteAddress) && noMoreAppointments != 1){ //if there are no more appointments do not come into this section again.
     currentAppointmentStartByteAddress = appointmentLastByteAddress;
     //since we have reached the end of the last appointment set the currentAppointmentStartByteAddress
     //to the appointment Last Byte address.
@@ -363,8 +377,8 @@ void getNextUnExpiredAppointment(){
     //Serial.println("Going out of : getNextUnExpiredAppointment()");
     return;
   }
-  setNextUnexpiredAppointmentPos();
-  getNextAppointmentByteCount();
+  //setNextUnexpiredAppointmentPos();//optimization, to prevent having to go through the entire list of appointments incase of quick power on/off s.
+  //getNextAppointmentByteCount();
   //Serial.println("Going out of : getNextUnExpiredAppointment()");
 }
 
@@ -651,6 +665,10 @@ void ReadNextAppointment(){
   Serial.println(" Inside ReadNextAppointment()");
   currentAppointmentStartByteAddress = nextAppointmentByteAddress ;
   int readAppointmentCounter = 0;
+
+  Serial.print(" nextAppointmentByteAddress : ");
+  Serial.println(nextAppointmentByteAddress);
+
   for ( nextAppointmentByteAddress ; nextAppointmentByteAddress < appointmentLastByteAddress ; nextAppointmentByteAddress++,readAppointmentCounter++)
     //not initialized to zero everytime so that the count is maintained.
   {
@@ -668,6 +686,10 @@ void ReadNextAppointment(){
       break;     // start over on a new line
     }
   }
+
+  Serial.print(" nextAppointmentByteAddress After Reading : ");
+  Serial.println(nextAppointmentByteAddress);
+
   Serial.print("readAppointment : ");
   Serial.println(readAppointment);
   //setNextUnexpiredAppointmentPos();
@@ -700,3 +722,9 @@ byte I2CEEPROM_Read(unsigned int address )
   data = Wire.read();
   return data;
 }
+
+
+
+
+
+
