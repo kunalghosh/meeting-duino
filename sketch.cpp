@@ -149,6 +149,7 @@ const byte EEPROM_ID = 0x50;      // I2C address for 24LC128 EEPROM
 #define TIME_STAMP 13 // to add an ending \0 terminator where required. hence 12+1
 
 char readAppointment[MESSAGE_SIZE] = "";
+char lcdee[16];
 char *appointmentMessage = NULL;
 // First few bytes are reserved for the time of Appointment
 // YYYYMMDDHHmm
@@ -228,7 +229,8 @@ void loop()
       Serial.println(appointmentMessage);
 
       lcd.setCursor(0,1);
-      lcd.print(appointmentMessage);
+      //lcd.print(appointmentMessage);
+      leftScroll(appointmentMessage,16,1);
       //delay(500);
       tune();
 
@@ -260,8 +262,14 @@ void loop()
     //This is an indication that there are no new appointments.
 
     Serial.println("No New Appointments.");
-    lcd.setCursor(0,1);
-    lcd.print("No New Appointments");
+    //lcd.setCursor(0,1);
+    //for(int i = 15 ; i >= -5 ; i --){
+      //lcd.setCursor(i,1);
+      //lcd.print("No New Appointments");
+      leftScroll("No New Appointments ",16,1);
+      delay(500);
+    //}
+    //lcd.clear();
     noMoreAppointments = 1;
   }
 
@@ -299,6 +307,35 @@ void RTCWrite(){
   RTC.set(pctime);   // set the RTC and the system time to the received value
   setTime(pctime);
 }
+
+void leftScroll(char* mess,int maxCols,int row){ // maxCols == total number of columns in your LCD display.
+  lcd.setCursor(0,row);
+  static int i = 0;//j = 0;
+  int k = i;
+  // the next message to be displayed must be 1 character to the right of the current starting character. To give the scrolling effect
+  // So store the current starting character.
+
+  for (int j = 0; j < maxCols ; i++, j++){
+    if (i == strlen(mess)){ // while copying to the lcdee array if the end of message is reached, start from the beginning.
+      i = 0;
+    }
+    Serial.print("mess[i] : ");
+    Serial.println(mess[i]);
+
+    Serial.print("i ");
+    Serial.println(i);
+
+    lcdee[j] = mess[i];
+  }
+  i = k + 1; // next message to be displayed on the screen must start from 1 character to the right of the current start character.
+  lcd.print(lcdee);
+  Serial.println(lcdee);
+  if (i == strlen(mess)){
+      i = 0;
+    }
+
+}
+
 void getNextUnExpiredAppointment(){
   // Keep Reading the Next Appointment till you get an appointment which has not expired.
   // All subsequent appointments must ( by design ) , be also valid ( not expired ).
